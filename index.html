@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>合约仓位计算器</title>
+<meta name="description" content="加密货币合约交易风险仓位计算器 — 纯本地计算，数据不外传">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F7F8">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171717">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="合约仓位计算器">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<style>
+:root {
+  color-scheme: light dark;
+  --surface: #F7F7F8;
+  --surface-muted: #EFEFF2;
+  --text: #171717;
+  --text-muted: #52525B;
+  --border: rgba(23, 23, 23, 0.12);
+  --brand: #0FDC78;
+  --brand-text: #004D26;
+  --danger: #E8463A;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #171717;
+    --surface-muted: #262626;
+    --text: #E5E5E5;
+    --text-muted: #A1A1AA;
+    --border: rgba(229, 229, 229, 0.12);
+    --brand: #32F08C;
+    --brand-text: #E5FFF2;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--surface);
+  color: var(--text);
+  font: 400 15px/22px "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100dvh;
+}
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 32px);
+}
+.head {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.title {
+  font: 600 20px/28px "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+}
+.dir {
+  font: 500 13px/18px "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.grid .span2 { grid-column: 1 / -1; }
+.field label {
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.inp {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: 500 16px/22px "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  appearance: none;
+}
+.inp:focus { outline: none; border-color: var(--brand); }
+.inp::placeholder { color: var(--text-muted); opacity: .6; }
+.chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.chip {
+  flex: 1;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 0;
+  font: 500 13px/18px "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.chip.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #004D26;
+  font-weight: 600;
+}
+.res {
+  background: var(--surface-muted);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 20px;
+}
+.res-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.res-head .kpilabel { justify-self: start; }
+.res-head .dir { justify-self: center; }
+.res-head .copy { justify-self: end; }
+.kpilabel {
+  font: 500 13px/18px "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+.copy {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: 500 13px/18px "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color .12s ease, border-color .12s ease;
+}
+.copy:active { color: var(--brand-text); border-color: var(--brand); }
+.rrows { margin-top: 0; }
+.rrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+}
+.rrow + .rrow { border-top: 1px solid var(--border); }
+.rrow[hidden] { display: none; }
+.rlabel {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.rval {
+  font: 500 14px/20px "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  word-break: break-all;
+}
+.rval.loss { color: var(--danger); }
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="head">
+    <h1 class="title">合约仓位计算器</h1>
+  </div>
+
+  <div class="grid">
+    <div class="field">
+      <label for="capital">总资金 (USDT)</label>
+      <input class="inp" id="capital" type="number" inputmode="decimal" min="0" step="any" placeholder="10000">
+    </div>
+    <div class="field">
+      <label for="risk">单笔风险 (%)</label>
+      <input class="inp" id="risk" type="number" inputmode="decimal" min="0" step="any" placeholder="1">
+    </div>
+    <div class="field">
+      <label for="entry">入场价</label>
+      <input class="inp" id="entry" type="number" inputmode="decimal" min="0" step="any" placeholder="65000">
+    </div>
+    <div class="field">
+      <label for="stop">止损价</label>
+      <input class="inp" id="stop" type="number" inputmode="decimal" min="0" step="any" placeholder="63500">
+    </div>
+    <div class="field">
+      <label for="lev">杠杆（选填）</label>
+      <input class="inp" id="lev" type="number" inputmode="decimal" min="0" step="any" value="10" placeholder="10">
+    </div>
+    <div class="field">
+      <label for="tp">止盈价（选填）</label>
+      <input class="inp" id="tp" type="number" inputmode="decimal" min="0" step="any" placeholder="68000">
+    </div>
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip" type="button" data-risk="0.5">0.5%</button>
+    <button class="chip" type="button" data-risk="1">1%</button>
+    <button class="chip" type="button" data-risk="2">2%</button>
+    <button class="chip" type="button" data-risk="3">3%</button>
+    <button class="chip" type="button" data-risk="10">10%</button>
+  </div>
+
+  <div class="res">
+    <div class="res-head">
+      <div class="kpilabel">最大仓位</div>
+      <div class="dir" id="dir">—</div>
+      <button class="copy" type="button" id="copyBtn">复制结果</button>
+    </div>
+    <div class="rrows">
+      <div class="rrow"><span class="rlabel">保证金</span><span class="rval"><span id="margin">—</span> USDT</span></div>
+      <div class="rrow"><span class="rlabel">仓位价值</span><span class="rval"><span id="value">—</span> USDT</span></div>
+      <div class="rrow"><span class="rlabel">止损亏损</span><span class="rval loss"><span id="loss">—</span> USDT</span></div>
+      <div class="rrow"><span class="rlabel">实际杠杆</span><span class="rval" id="efflev">—</span></div>
+      <div class="rrow" id="tpProfitRow" hidden><span class="rlabel">止盈收益</span><span class="rval"><span id="tpprofit">—</span> USDT</span></div>
+      <div class="rrow"><span class="rlabel">预估爆仓价（逐仓）</span><span class="rval" id="liq">—</span></div>
+      <div class="rrow" id="tpRoiRow" hidden><span class="rlabel">止盈 ROI / 盈亏比</span><span class="rval" id="tproi">—</span></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var ids = ['capital', 'risk', 'entry', 'stop', 'lev', 'tp'];
+  var SYMBOL = 'BTC';
+  var STORE_KEY = 'poscalc_v1';
+
+  function num(id) {
+    var n = parseFloat($(id).value);
+    return isFinite(n) ? n : NaN;
+  }
+  function fmt(n, d) {
+    return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmtPrice(n) {
+    if (n >= 1) return fmt(n, 2);
+    return parseFloat(n.toFixed(6)).toString();
+  }
+  function set(id, text) { $(id).textContent = text; }
+
+  function calc() {
+    var capital = num('capital'), risk = num('risk'),
+        entry = num('entry'), stop = num('stop'),
+        lev = num('lev'), tp = num('tp');
+    var symbol = SYMBOL;
+
+    var ok = isFinite(capital) && capital > 0 &&
+             isFinite(risk) && risk > 0 &&
+             isFinite(entry) && entry > 0 &&
+             isFinite(stop) && stop > 0;
+
+    var dirBadge = $('dir');
+    if (!ok || entry === stop) {
+      dirBadge.textContent = '—';
+      ['value', 'margin', 'loss', 'efflev', 'liq'].forEach(function (k) { set(k, '—'); });
+      $('tpProfitRow').hidden = true;
+      $('tpRoiRow').hidden = true;
+      save();
+      return;
+    }
+
+    var isLong = stop < entry;
+    dirBadge.textContent = isLong ? '做多 ' + symbol : '做空 ' + symbol;
+
+    var loss = capital * risk / 100;
+    var size = loss / Math.abs(entry - stop);
+    var value = size * entry;
+
+    set('loss', fmt(loss, 2));
+    set('value', fmt(value, 2));
+
+    if (isFinite(lev) && lev >= 1) {
+      set('margin', fmt(value / lev, 2));
+      set('liq', lev > 1 ? fmtPrice(entry * (isLong ? 1 - 1 / lev : 1 + 1 / lev)) : '—');
+    } else {
+      set('margin', '—');
+      set('liq', '—');
+    }
+    set('efflev', (value / capital).toFixed(2) + 'x');
+
+    var tpValid = isFinite(tp) && tp > 0 && tp !== entry &&
+      (isLong ? tp > entry : tp < entry);
+    if (tpValid) {
+      var profit = size * Math.abs(tp - entry);
+      $('tpProfitRow').hidden = false;
+      $('tpRoiRow').hidden = false;
+      set('tpprofit', fmt(profit, 2));
+      var roiText = isFinite(lev) && lev >= 1
+        ? (profit / (value / lev) * 100).toFixed(1) + '%'
+        : (profit / value * 100).toFixed(1) + '%';
+      set('tproi', roiText + ' / ' + (profit / loss).toFixed(2));
+    } else {
+      $('tpProfitRow').hidden = true;
+      $('tpRoiRow').hidden = true;
+    }
+    save();
+  }
+
+  function save() {
+    var data = {};
+    ids.forEach(function (id) { data[id] = $(id).value; });
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function load() {
+    var raw = null;
+    try { raw = localStorage.getItem(STORE_KEY); } catch (e) {}
+    if (!raw) return;
+    try {
+      var data = JSON.parse(raw);
+      ids.forEach(function (id) {
+        if (typeof data[id] === 'string') $(id).value = data[id];
+      });
+    } catch (e) {}
+  }
+
+  function markChips() {
+    var risk = $('risk').value;
+    document.querySelectorAll('.chip').forEach(function (chip) {
+      chip.classList.toggle('active', chip.getAttribute('data-risk') === risk);
+    });
+  }
+
+  document.getElementById('chips').addEventListener('click', function (e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    $('risk').value = chip.getAttribute('data-risk');
+    markChips();
+    calc();
+  });
+
+  ids.forEach(function (id) {
+    $(id).addEventListener('input', function () { markChips(); calc(); });
+  });
+
+  $('copyBtn').addEventListener('click', function () {
+    var lines = [];
+    var dir = $('dir').textContent;
+    if (dir === '—') { lines.push('请先填写完整的计算参数'); }
+    else {
+      lines.push(dir + '｜入场 ' + fmtPrice(num('entry')) + '｜止损 ' + fmtPrice(num('stop')));
+      lines.push('最大仓位价值 ' + $('value').textContent + ' USDT');
+      lines.push('止损亏损 ' + $('loss').textContent + ' USDT');
+      if ($('margin').textContent !== '—') lines.push('保证金 ' + $('margin').textContent + ' USDT｜爆仓价 ' + $('liq').textContent);
+      if (!$('tpRoiRow').hidden) lines.push('止盈收益 ' + $('tpprofit').textContent + ' USDT｜盈亏比 ' + $('tproi').textContent.split(' / ')[1]);
+    }
+    var text = lines.join('\n');
+    function fallbackCopy() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      done();
+    }
+    function done() {
+      var btn = $('copyBtn');
+      var old = btn.textContent;
+      btn.textContent = '已复制';
+      setTimeout(function () { btn.textContent = old; }, 1500);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  });
+
+  load();
+  markChips();
+  calc();
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
